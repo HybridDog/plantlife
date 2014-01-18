@@ -158,12 +158,17 @@ for i, bush_name in ipairs(bushes_classic.bushes) do
 	if bush_name == "mixed_berry" then
 		bush_name = "fruitless";
 		desc      = "currently fruitless";
+		texture_top = "bushes_fruitless_bush_top.png"
+		texture_bottom = "bushes_fruitless_bush_bottom.png"
+	else
+		texture_top = "bushes_bush_top.png"
+		texture_bottom = "bushes_bush_bottom.png"
 	end
 
 	minetest.register_node(":bushes:" .. bush_name .. "_bush", {
 			description = desc.." Bush",
 			drawtype = "nodebox",
-			tiles = {"bushes_bush_top.png", "bushes_bush_bottom.png", "bushes_" .. bush_name .. "_bush.png"},
+			tiles = {texture_top, texture_bottom, "bushes_" .. bush_name .. "_bush.png"},
 			inventory_image = "bushes_" .. bush_name .. "_bush.png",
 			paramtype = "light",
 			sunlight_propagates = true,
