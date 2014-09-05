@@ -218,9 +218,7 @@ local function nodes_in_area(p1, p2, names, data, area)
 	for z = p1.z,p2.z do
 		for y = p1.y,p2.y do
 			for x = p1.x,p2.x do
-				local p = area:index(x, y, z)
-				local id = data[p]
-				if find_node(id, names) then
+				if find_node(data[area:index(x, y, z)], names) then
 					table.insert(ps, {x=x, y=y, z=z})
 				end
 			end
@@ -246,7 +244,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 		get_content("air")
 
 		local blockhash = minetest.hash_node_position(minp)
-		local search_area = minetest.find_nodes_in_area(minp, maxp, plantslib.surfaces_list)
+		local search_area = nodes_in_area(minp, maxp, plantslib.surfaces_list, data, area)
 
 		-- search the generated block for surfaces
 
@@ -255,8 +253,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 
 		for i = 1, #search_area do
 		local pos = search_area[i]
-			local p_top = { x=pos.x, y=pos.y+1, z=pos.z }
-			if minetest.get_node(p_top).name == "air" then
+			if data[area:index(pos.x, pos.y+1, pos.z)]) == c.air then
 				surface_nodes.blockhash[#surface_nodes.blockhash + 1] = pos
 			end
 		end
@@ -274,13 +271,23 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 
 			for i = 1, #surface_nodes.blockhash do
 				local pos = surface_nodes.blockhash[i]
+				local p_pos = area:indexp(pos)
+				local d_p_pos = data[p_pos]
+				get_content(d_p_pos)
+				local d_p_deep = data[area:index(pos.x, pos.y-biome.depth-1, pos.z)]
+				get_content(d_p_deep)
+				local d_p_under = data[area:index(pos.x, pos.y-1, pos.z)]
+				get_content(d_p_under)
 				local p_top = { x = pos.x, y = pos.y + 1, z = pos.z }
 				local noise1 = perlin_fertile_area:get2d({x=pos.x, y=pos.z})
 				local noise2 = plantslib.perlin_temperature:get2d({x=pos.x, y=pos.z})
 				local noise3 = plantslib.perlin_humidity:get2d({x=pos.x+150, y=pos.z+50})
 				local biome_surfaces_string = dump(biome.surface)
-				if ((not biome.depth and string.find(biome_surfaces_string, minetest.get_node(pos).name)) or (biome.depth and not string.find(biome_surfaces_string, minetest.get_node({ x = pos.x, y = pos.y-biome.depth-1, z = pos.z }).name)))
-				  and minetest.get_node(p_top).name == "air"
+				if (
+					(not biome.depth and string.find(biome_surfaces_string, cn[d_p_pos])
+				) or (biome.depth
+					and not string.find(biome_surfaces_string, cn[d_p_deep])))
+				  and data[area:index(pos.x, pos.y+1, pos.z)] == c.air
 				  and pos.y >= biome.min_elevation
 				  and pos.y <= biome.max_elevation
 				  and noise1 > biome.plantlife_limit
@@ -288,10 +295,17 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				  and noise2 >= biome.temp_max
 				  and noise3 <= biome.humidity_min
 				  and noise3 >= biome.humidity_max
-				  and (not biome.ncount or #(minetest.find_nodes_in_area({x=pos.x-1, y=pos.y, z=pos.z-1}, {x=pos.x+1, y=pos.y, z=pos.z+1}, biome.neighbors)) > biome.ncount)
-				  and (not biome.near_nodes or #(minetest.find_nodes_in_area({x=pos.x-biome.near_nodes_size, y=pos.y-biome.near_nodes_vertical, z=pos.z-biome.near_nodes_size}, {x=pos.x+biome.near_nodes_size, y=pos.y+biome.near_nodes_vertical, z=pos.z+biome.near_nodes_size}, biome.near_nodes)) >= biome.near_nodes_count)
+				  and (not biome.ncount or #(nodes_in_area(
+					{x=pos.x-1, y=pos.y, z=pos.z-1},
+					{x=pos.x+1, y=pos.y, z=pos.z+1},
+					biome.neighbors, data, area)) > biome.ncount)
+				  and (not biome.near_nodesor #(nodes_in_area(
+						{x=pos.x-biome.near_nodes_size, y=pos.y-biome.near_nodes_vertical, z=pos.z-biome.near_nodes_size},
+						{x=pos.x+biome.near_nodes_size, y=pos.y+biome.near_nodes_vertical, z=pos.z+biome.near_nodes_size},
+						biome.near_nodes, data, area)
+					) >= biome.near_nodes_count)
 				  and math.random(1,100) > biome.rarity
-				  and (not biome.below_nodes or string.find(dump(biome.below_nodes), minetest.get_node({x=pos.x, y=pos.y-1, z=pos.z}).name) )
+				  and (not biome.below_nodes or string.find(dump(biome.below_nodes), cn[d_p_under]) )
 				  then
 					in_biome_nodes[#in_biome_nodes + 1] = pos
 				end
@@ -312,7 +326,11 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 						end
 						local p_top = { x = pos.x, y = pos.y + 1, z = pos.z }
 
-						if not (biome.avoid_nodes and biome.avoid_radius and minetest.find_node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes)) then
+						if not (
+							biome.avoid_nodes
+							and biome.avoid_radius
+							and minetest.find_node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes)
+						) then
 							local p_p_top = area:indexp(p_top)
 							if biome.delete_above then
 								data[p_p_top] = c.air
