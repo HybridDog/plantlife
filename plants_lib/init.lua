@@ -182,6 +182,53 @@ function plantslib:register_generate_plant(biomedef, nodes_or_function_or_model)
 	end
 end
 
+
+local c = {}
+local cn = {}
+local function get_content(name)
+	if tonumber(name) then
+		if cn[name] then
+			return
+		end
+		local nn = minetest.get_content_from_id(name)
+		cn[name] = nn
+		c[nn] = name
+	else
+		if c[name] then
+			return
+		end
+		local id = minetest.get_content_id(name)
+		c[name] = id
+		cn[id] = name
+	end
+end
+
+local function find_node(id, names)
+	for _,name in pairs(names) do
+		get_content(name)
+		if id == cn[name] then
+			return true
+		end
+	end
+	return false
+end
+
+local function nodes_in_area(p1, p2, names, data, area)
+	local ps = {}
+	for z = p1.z,p2.z do
+		for y = p1.y,p2.y do
+			for x = p1.x,p2.x do
+				local p = area:index(x, y, z)
+				local id = data[p]
+				if find_node(id, names) then
+					table.insert(ps, {x=x, y=y, z=z})
+				end
+			end
+		end
+	end
+	return ps
+end
+
 -- Primary mapgen spawner, for mods that can work with air checking enabled on
 -- a surface during the initial map read stage.
 
@@ -190,6 +237,13 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 
 		-- use the block hash as a unique key into the surface_nodes
 		-- table, so that we can write the table thread-safely.
+
+		local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
+		local data = vm:get_data()
+		local param2s = vm:get_param2_data() 
+		local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
+
+		get_content("air")
 
 		local blockhash = minetest.hash_node_position(minp)
 		local search_area = minetest.find_nodes_in_area(minp, maxp, plantslib.surfaces_list)
@@ -209,7 +263,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 
 		for action = 1, #plantslib.actions_list do
 			local biome = plantslib.actions_list[action][1]
-			local nodes_or_function_or_model = plantslib.actions_list[action][2]
+			local nofom = plantslib.actions_list[action][2] --nodes_or_function_or_model
 
 			plantslib:set_defaults(biome)
 
@@ -259,57 +313,61 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 						local p_top = { x = pos.x, y = pos.y + 1, z = pos.z }
 
 						if not (biome.avoid_nodes and biome.avoid_radius and minetest.find_node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes)) then
+							local p_p_top = area:indexp(p_top)
 							if biome.delete_above then
-								minetest.remove_node(p_top)
-								minetest.remove_node({x=p_top.x, y=p_top.y+1, z=p_top.z})
+								data[p_p_top] = c.air
+								data[area:index(p_top.x, p_top.y+1, p_top.z)] = c.air
 							end
 
 							if biome.delete_above_surround then
-								minetest.remove_node({x=p_top.x-1, y=p_top.y, z=p_top.z})
-								minetest.remove_node({x=p_top.x+1, y=p_top.y, z=p_top.z})
-								minetest.remove_node({x=p_top.x,   y=p_top.y, z=p_top.z-1})
-								minetest.remove_node({x=p_top.x,   y=p_top.y, z=p_top.z+1})
-
-								minetest.remove_node({x=p_top.x-1, y=p_top.y+1, z=p_top.z})
-								minetest.remove_node({x=p_top.x+1, y=p_top.y+1, z=p_top.z})
-								minetest.remove_node({x=p_top.x,   y=p_top.y+1, z=p_top.z-1})
-								minetest.remove_node({x=p_top.x,   y=p_top.y+1, z=p_top.z+1})
+								for i = 0,1 do
+									for j = -1,1,2 do
+										data[area:index(p_top.x+j, p_top.y+i, p_top.z)] = c.air
+										data[area:index(p_top.x, p_top.y+i, p_top.z+j)] = c.air
+									end
+								end
 							end
 
 							if biome.spawn_replace_node then
-								minetest.remove_node(pos)
+								data[area:indexp(pos)] = c.air
 							end
 
-							local objtype = type(nodes_or_function_or_model)
+							local objtype = type(nofom)
 
 							if objtype == "table" then
-								if nodes_or_function_or_model.axiom then
-									plantslib:generate_tree(pos, nodes_or_function_or_model)
+								if nofom.axiom then
+									plantslib:generate_tree(pos, nofom)
 									spawned = true
 								else
 									local fdir = nil
 									if biome.random_facedir then
 										fdir = math.random(biome.random_facedir[1], biome.random_facedir[2])
 									end
-									minetest.set_node(p_top, { name = nodes_or_function_or_model[math.random(#nodes_or_function_or_model)], param2 = fdir })
+									local name = nofom[math.random(#nofom)]
+									get_content(name)
+									data[p_p_top] = c[name]
+									param2s[p_p_top] = fdir
 									spawned = true
 								end
 							elseif objtype == "string" and
-							  minetest.registered_nodes[nodes_or_function_or_model] then
+							  minetest.registered_nodes[nofom] then
 								local fdir = nil
 								if biome.random_facedir then
 									fdir = math.random(biome.random_facedir[1], biome.random_facedir[2])
 								end
-								minetest.set_node(p_top, { name = nodes_or_function_or_model, param2 = fdir })
+								local name = nofom
+								get_content(name)
+								data[p_p_top] = c[name]
+								param2s[p_p_top] = fdir
 								spawned = true
 							elseif objtype == "function" then
-								nodes_or_function_or_model(pos)
+								nofom(pos)
 								spawned = true
 							elseif objtype == "string" and pcall(loadstring(("return %s(...)"):
-								format(nodes_or_function_or_model)),pos) then
+								format(nofom)),pos) then
 								spawned = true
 							else
-								plantslib:dbg("Warning: Ignored invalid definition for object "..dump(nodes_or_function_or_model).." that was pointed at {"..dump(pos).."}")
+								plantslib:dbg("Warning: Ignored invalid definition for object "..dump(nofom).." that was pointed at {"..dump(pos).."}")
 							end
 						else
 							tries = tries + 1
@@ -318,6 +376,10 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				end
 			end
 		end
+		vm:set_data(data)
+		vm:update_liquids()
+		vm:write_to_map()
+		vm:set_param2_data(param2s)
 	end
 end
 
