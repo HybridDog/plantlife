@@ -227,7 +227,7 @@ local function avoid_groups(tab)
 				names = {}
 				for i,data in pairs(minetest.registered_nodes) do
 					if data.groups
-					and data.groups.name then
+					and data.groups[name] then
 						table.insert(names, i)
 					end
 				end
