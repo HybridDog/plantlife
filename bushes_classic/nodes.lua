@@ -173,6 +173,7 @@ for i, bush_name in ipairs(bushes_classic.bushes) do
 			paramtype = "light",
 			sunlight_propagates = true,
 			walkable = false,
+			visual_scale = 3,
 			node_box = {
 				type = "fixed",
 				fixed = {

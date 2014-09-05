@@ -31,6 +31,8 @@ function plantslib:dbg(msg)
 	end
 end
 
+plantslib.search_surfaces = false -- search for the surface while generating map
+
 plantslib.plantlife_seed_diff = 329	-- needs to be global so other mods can see it
 
 local perlin_octaves = 3
@@ -50,7 +52,8 @@ local humidity_scale = 250
 local time_scale = 1
 local time_speed = tonumber(minetest.setting_get("time_speed"))
 
-if time_speed and time_speed > 0 then
+if time_speed
+and time_speed > 0 then
 	time_scale = 72 / time_speed
 end
 
@@ -119,7 +122,9 @@ function plantslib:register_generate_plant(biomedef, node_or_function_or_model)
 	plantslib:dbg("Registered mapgen spawner:")
 	plantslib:dbg(dump(biomedef))
 
-	minetest.register_on_generated(plantslib:search_for_surfaces(minp, maxp, biomedef, node_or_function_or_model))
+	if plantslib.search_surfaces then
+		minetest.register_on_generated(plantslib:search_for_surfaces(minp, maxp, biomedef, node_or_function_or_model))
+	end
 end
 
 function plantslib:search_for_surfaces(minp, maxp, biomedef, node_or_function_or_model)
@@ -221,7 +226,11 @@ function plantslib:search_for_surfaces(minp, maxp, biomedef, node_or_function_or
 				end
 			end
 		end
-                plantslib:dbg("Evaluated/populated chunk in ".. (os.clock()-t1)*1000 .."ms")
+		local delay = (os.clock()-t1)
+                plantslib:dbg("Evaluated/populated chunk in ".. delay*1000 .."ms")
+		if delay > 1 then
+			print("[plantslib] INFO: plantslib:search_for_surfaces took "..delay.."s")
+		end
 	end
 end
 
