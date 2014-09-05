@@ -187,12 +187,13 @@ local c = {}
 local cn = {}
 local function get_content(name)
 	if tonumber(name) then
-		if cn[name] then
+		local id = name
+		if cn[id] then
 			return
 		end
-		local nn = minetest.get_content_from_id(name)
-		cn[name] = nn
-		c[nn] = name
+		local name = minetest.get_content_from_id(id)
+		c[name] = id
+		cn[id] = name
 	else
 		if c[name] then
 			return
