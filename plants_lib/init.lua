@@ -213,7 +213,38 @@ local function find_node(id, names)
 	return false
 end
 
+local groups_nd_tab = {}
+local function avoid_groups(tab)
+	if type(tab) == "string" then
+		tab = {tab}
+	end
+	local t = {}
+	for _,name in pairs(tab) do
+		if string.sub(name, 1, 6) == "group:" then
+			name = string.sub(name, 7)
+			local names = groups_nd_tab[name]
+			if not names then
+				names = {}
+				for i,data in pairs(minetest.registered_nodes) do
+					if data.groups
+					and data.groups.name then
+						table.insert(names, i)
+					end
+				end
+				groups_nd_tab[name] = names
+			end
+			for _,name in pairs(names) do
+				table.insert(t, name)
+			end
+		else
+			table.insert(t, name)
+		end
+	end
+	return t
+end
+
 local function nodes_in_area(p1, p2, names, data, area)
+	names = avoid_groups(names)
 	local ps = {}
 	for z = p1.z,p2.z do
 		for y = p1.y,p2.y do
@@ -225,6 +256,20 @@ local function nodes_in_area(p1, p2, names, data, area)
 		end
 	end
 	return ps
+end
+
+local function node_near(p, r, names, data, area)
+	names = avoid_groups(names)
+	for z = p.z-r, p.z+r do
+		for y = p.y-r, p.y+r do
+			for x = p.x-r, p.x+r do
+				if z*z+y*y+x*x <= r*r
+				and find_node(data[area:index(x, y, z)], names) then
+					return {x=x, y=y, z=z}
+				end
+			end
+		end
+	end
 end
 
 -- Primary mapgen spawner, for mods that can work with air checking enabled on
@@ -246,6 +291,9 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 		local blockhash = minetest.hash_node_position(minp)
 		local search_area = nodes_in_area(minp, maxp, plantslib.surfaces_list, data, area)
 
+		local trees = {}
+		local funcs = {}
+
 		-- search the generated block for surfaces
 
 		local surface_nodes = {}
@@ -253,7 +301,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 
 		for i = 1, #search_area do
 		local pos = search_area[i]
-			if data[area:index(pos.x, pos.y+1, pos.z)]) == c.air then
+			if data[area:index(pos.x, pos.y+1, pos.z)] == c.air then
 				surface_nodes.blockhash[#surface_nodes.blockhash + 1] = pos
 			end
 		end
@@ -299,7 +347,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 					{x=pos.x-1, y=pos.y, z=pos.z-1},
 					{x=pos.x+1, y=pos.y, z=pos.z+1},
 					biome.neighbors, data, area)) > biome.ncount)
-				  and (not biome.near_nodesor #(nodes_in_area(
+				  and (not biome.near_nodes or #(nodes_in_area(
 						{x=pos.x-biome.near_nodes_size, y=pos.y-biome.near_nodes_vertical, z=pos.z-biome.near_nodes_size},
 						{x=pos.x+biome.near_nodes_size, y=pos.y+biome.near_nodes_vertical, z=pos.z+biome.near_nodes_size},
 						biome.near_nodes, data, area)
@@ -329,7 +377,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 						if not (
 							biome.avoid_nodes
 							and biome.avoid_radius
-							and minetest.find_node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes)
+							and node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes, data, area)
 						) then
 							local p_p_top = area:indexp(p_top)
 							if biome.delete_above then
@@ -354,7 +402,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 
 							if objtype == "table" then
 								if nofom.axiom then
-									plantslib:generate_tree(pos, nofom)
+									table.insert(trees, {pos, nofom})
 									spawned = true
 								else
 									local fdir = nil
@@ -379,9 +427,10 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 								param2s[p_p_top] = fdir
 								spawned = true
 							elseif objtype == "function" then
-								nofom(pos)
+								table.insert(funcs, {nofom, pos})
 								spawned = true
-							elseif objtype == "string" and pcall(loadstring(("return %s(...)"):
+							elseif objtype == "string"
+							and pcall(loadstring(("return %s(...)"):
 								format(nofom)),pos) then
 								spawned = true
 							else
@@ -398,6 +447,15 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 		vm:update_liquids()
 		vm:write_to_map()
 		vm:set_param2_data(param2s)
+
+		for _,i in pairs(trees) do
+			plantslib:generate_tree(i[1], i[2])
+		end
+
+		for _,i in pairs(funcs) do
+			i[1](i[2])
+		end
+
 	end
 end
 
