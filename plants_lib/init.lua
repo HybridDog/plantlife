@@ -279,6 +279,8 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 		-- use the block hash as a unique key into the surface_nodes
 		-- table, so that we can write the table thread-safely.
 
+		local t1 = os.clock()
+
 		local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
 		local data = vm:get_data()
 		local param2s = vm:get_param2_data() 
@@ -445,18 +447,26 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				end
 			end
 		end
+		plantslib:dbg(string.format("[plife] nodes calcd after ca. %.2fs", os.clock() - t1))
+		t1 = os.clock()
 		vm:set_data(data)
 		vm:update_liquids()
 		vm:write_to_map()
 		vm:set_param2_data(param2s)
 
+		plantslib:dbg(string.format("[plife] nodes set after ca. %.2fs", os.clock() - t1))
+		t1 = os.clock()
+
 		for _,i in pairs(trees) do
 			plantslib:generate_tree(i[1], i[2])
 		end
+		plantslib:dbg(string.format("[plife] trees set after ca. %.2fs", os.clock() - t1))
+		t1 = os.clock()
 
 		for _,i in pairs(funcs) do
 			i[1](i[2])
 		end
+		plantslib:dbg(string.format("[plife] funcs done after ca. %.2fs", os.clock() - t1))
 
 	end
 end
