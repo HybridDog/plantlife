@@ -331,7 +331,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 		get_content("air")
 
 		local blockhash = minetest.hash_node_position(minp)
-		local search_area = minetest.find_nodes_in_area(minp, maxp, plantslib.surfaces_list, data, area, minp, maxp)
+		local search_area = minetest.find_nodes_in_area(minp, maxp, plantslib.surfaces_list)
 
 		local trees = {}
 		local funcs = {}
@@ -392,11 +392,11 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				  and (not biome.ncount or #(minetest.find_nodes_in_area(
 					{x=pos.x-1, y=pos.y, z=pos.z-1},
 					{x=pos.x+1, y=pos.y, z=pos.z+1},
-					biome.neighbors, data, area, minp, maxp)) > biome.ncount)
+					biome.neighbors)) > biome.ncount)
 				  and (not biome.near_nodes or #(minetest.find_nodes_in_area(
 						{x=pos.x-biome.near_nodes_size, y=pos.y-biome.near_nodes_vertical, z=pos.z-biome.near_nodes_size},
 						{x=pos.x+biome.near_nodes_size, y=pos.y+biome.near_nodes_vertical, z=pos.z+biome.near_nodes_size},
-						biome.near_nodes, data, area, minp, maxp)
+						biome.near_nodes)
 					) >= biome.near_nodes_count)
 				  and math.random(1,100) > biome.rarity
 				  and (not biome.below_nodes or string.find(dump(biome.below_nodes), cn[d_p_under]) )
@@ -423,7 +423,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 						if not (
 							biome.avoid_nodes
 							and biome.avoid_radius
-							and minetest.find_node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes, data, area, minp, maxp)
+							and minetest.find_node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes)
 						) then
 							local p_p_top = area:indexp(p_top)
 							if biome.delete_above then
