@@ -23,7 +23,7 @@ else
     S = function ( s ) return s end
 end
 
-local DEBUG = false --... except if you want to spam the console with debugging info :-)
+local DEBUG = 1--false --... except if you want to spam the console with debugging info :-)
 
 function plantslib:dbg(msg)
 	if DEBUG then
@@ -254,7 +254,18 @@ local function nodes_in_area(p1, p2, names, data, area)
 	return ps
 end
 
-local function node_near(p, radius, names, data, area)
+local function cnt_nodes_in_area(p1, p2, names, data, area)
+	names = avoid_groups(names)
+	local count = 0
+	for i in area:iterp(p1, p2) do
+		if find_node(data[i], names) then
+			count = count+1
+		end
+	end
+	return count
+end
+
+--[[local function node_near(p, radius, names, data, area)
 	names = avoid_groups(names)
 	local r = math.ceil(radius)
 	local rq = radius*radius
@@ -266,6 +277,17 @@ local function node_near(p, radius, names, data, area)
 					return {x=x, y=y, z=z}
 				end
 			end
+		end
+	end
+end]]
+local function node_near(p, radius, names, data, area)
+	names = avoid_groups(names)
+	local r = math.floor(radius+0.5)
+	local p1 = vector.subtract(p, r)
+	local p2 = vector.add(p, r)
+	for i in area:iterp(p1, p2) do
+		if find_node(data[i], names) then
+			return true
 		end
 	end
 end
@@ -347,11 +369,11 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				  and noise2 >= biome.temp_max
 				  and noise3 <= biome.humidity_min
 				  and noise3 >= biome.humidity_max
-				  and (not biome.ncount or #(nodes_in_area(
+				  and (not biome.ncount or (cnt_nodes_in_area(
 					{x=pos.x-1, y=pos.y, z=pos.z-1},
 					{x=pos.x+1, y=pos.y, z=pos.z+1},
 					biome.neighbors, data, area)) > biome.ncount)
-				  and (not biome.near_nodes or #(nodes_in_area(
+				  and (not biome.near_nodes or (cnt_nodes_in_area(
 						{x=pos.x-biome.near_nodes_size, y=pos.y-biome.near_nodes_vertical, z=pos.z-biome.near_nodes_size},
 						{x=pos.x+biome.near_nodes_size, y=pos.y+biome.near_nodes_vertical, z=pos.z+biome.near_nodes_size},
 						biome.near_nodes, data, area)
@@ -447,26 +469,26 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				end
 			end
 		end
-		plantslib:dbg(string.format("[plife] nodes calcd after ca. %.2fs", os.clock() - t1))
+		plantslib:dbg(string.format("nodes calcd after ca. %.2fs", os.clock() - t1))
 		t1 = os.clock()
 		vm:set_data(data)
 		vm:update_liquids()
 		vm:write_to_map()
 		vm:set_param2_data(param2s)
 
-		plantslib:dbg(string.format("[plife] nodes set after ca. %.2fs", os.clock() - t1))
+		plantslib:dbg(string.format("nodes set after ca. %.2fs", os.clock() - t1))
 		t1 = os.clock()
 
 		for _,i in pairs(trees) do
 			plantslib:generate_tree(i[1], i[2])
 		end
-		plantslib:dbg(string.format("[plife] trees set after ca. %.2fs", os.clock() - t1))
+		plantslib:dbg(string.format("trees set after ca. %.2fs", os.clock() - t1))
 		t1 = os.clock()
 
 		for _,i in pairs(funcs) do
 			i[1](i[2])
 		end
-		plantslib:dbg(string.format("[plife] funcs done after ca. %.2fs", os.clock() - t1))
+		plantslib:dbg(string.format("funcs done after ca. %.2fs", os.clock() - t1))
 
 	end
 end
