@@ -186,15 +186,15 @@ end
 local c = {}
 local cn = {}
 local function get_content(name)
-	if tonumber(name) then
-		local id = name
+	local id = tonumber(name)
+	if id then
 		if cn[id] then
 			return
 		end
-		local name = minetest.get_content_from_id(id)
+		local name = minetest.get_name_from_content_id(id)
 		c[name] = id
 		cn[id] = name
-	else
+	elseif name then
 		if c[name] then
 			return
 		end
@@ -205,13 +205,8 @@ local function get_content(name)
 end
 
 local function find_node(id, names)
-	for _,name in pairs(names) do
-		get_content(name)
-		if id == cn[name] then
-			return true
-		end
-	end
-	return false
+	get_content(id)
+	return search_table(names, cn[id])
 end
 
 local groups_nd_tab = {}
@@ -259,12 +254,14 @@ local function nodes_in_area(p1, p2, names, data, area)
 	return ps
 end
 
-local function node_near(p, r, names, data, area)
+local function node_near(p, radius, names, data, area)
 	names = avoid_groups(names)
+	local r = math.ceil(radius)
+	local rq = radius*radius
 	for z = p.z-r, p.z+r do
 		for y = p.y-r, p.y+r do
 			for x = p.x-r, p.x+r do
-				if z*z+y*y+x*x <= r*r
+				if z*z+y*y+x*x <= rq
 				and find_node(data[area:index(x, y, z)], names) then
 					return {x=x, y=y, z=z}
 				end
@@ -323,8 +320,12 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				local p_pos = area:indexp(pos)
 				local d_p_pos = data[p_pos]
 				get_content(d_p_pos)
-				local d_p_deep = data[area:index(pos.x, pos.y-biome.depth-1, pos.z)]
-				get_content(d_p_deep)
+				local depth = biome.depth
+				local d_p_deep
+				if depth then
+					d_p_deep = data[area:index(pos.x, pos.y-depth-1, pos.z)]
+					get_content(d_p_deep)
+				end
 				local d_p_under = data[area:index(pos.x, pos.y-1, pos.z)]
 				get_content(d_p_under)
 				local p_top = { x = pos.x, y = pos.y + 1, z = pos.z }
@@ -333,8 +334,8 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				local noise3 = plantslib.perlin_humidity:get2d({x=pos.x+150, y=pos.z+50})
 				local biome_surfaces_string = dump(biome.surface)
 				if (
-					(not biome.depth and string.find(biome_surfaces_string, cn[d_p_pos])
-				) or (biome.depth
+					(not depth and string.find(biome_surfaces_string, cn[d_p_pos])
+				) or (depth
 					and not string.find(biome_surfaces_string, cn[d_p_deep])))
 				  and data[area:index(pos.x, pos.y+1, pos.z)] == c.air
 				  and pos.y >= biome.min_elevation
