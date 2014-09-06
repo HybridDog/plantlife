@@ -203,7 +203,7 @@ local function get_content(name)
 		cn[id] = name
 	end
 end
-
+--[[
 local function find_node(id, names)
 	get_content(id)
 	return search_table(names, cn[id])
@@ -283,7 +283,7 @@ local function cnt_nodes_in_area(p1, p2, names, data, area, minp, maxp)
 	return count
 end
 
---[[local function node_near(p, radius, names, data, area)
+--[local function node_near(p, radius, names, data, area)
 	names = avoid_groups(names)
 	local r = math.ceil(radius)
 	local rq = radius*radius
@@ -297,7 +297,7 @@ end
 			end
 		end
 	end
-end]]
+end]
 local function node_near(p, radius, names, data, area, minp, maxp)
 	names = avoid_groups(names)
 	local r = math.floor(radius+0.5)
@@ -310,7 +310,7 @@ local function node_near(p, radius, names, data, area, minp, maxp)
 			return true
 		end
 	end
-end
+end]]
 
 -- Primary mapgen spawner, for mods that can work with air checking enabled on
 -- a surface during the initial map read stage.
@@ -331,7 +331,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 		get_content("air")
 
 		local blockhash = minetest.hash_node_position(minp)
-		local search_area = nodes_in_area(minp, maxp, plantslib.surfaces_list, data, area, minp, maxp)
+		local search_area = minetest.find_nodes_in_area(minp, maxp, plantslib.surfaces_list, data, area, minp, maxp)
 
 		local trees = {}
 		local funcs = {}
@@ -389,11 +389,11 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 				  and noise2 >= biome.temp_max
 				  and noise3 <= biome.humidity_min
 				  and noise3 >= biome.humidity_max
-				  and (not biome.ncount or (cnt_nodes_in_area(
+				  and (not biome.ncount or #(minetest.find_nodes_in_area(
 					{x=pos.x-1, y=pos.y, z=pos.z-1},
 					{x=pos.x+1, y=pos.y, z=pos.z+1},
 					biome.neighbors, data, area, minp, maxp)) > biome.ncount)
-				  and (not biome.near_nodes or (cnt_nodes_in_area(
+				  and (not biome.near_nodes or #(minetest.find_nodes_in_area(
 						{x=pos.x-biome.near_nodes_size, y=pos.y-biome.near_nodes_vertical, z=pos.z-biome.near_nodes_size},
 						{x=pos.x+biome.near_nodes_size, y=pos.y+biome.near_nodes_vertical, z=pos.z+biome.near_nodes_size},
 						biome.near_nodes, data, area, minp, maxp)
@@ -423,7 +423,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 						if not (
 							biome.avoid_nodes
 							and biome.avoid_radius
-							and node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes, data, area, minp, maxp)
+							and minetest.find_node_near(p_top, biome.avoid_radius + math.random(-1.5,2), biome.avoid_nodes, data, area, minp, maxp)
 						) then
 							local p_p_top = area:indexp(p_top)
 							if biome.delete_above then
