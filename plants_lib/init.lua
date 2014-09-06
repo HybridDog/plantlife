@@ -448,7 +448,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 
 							if objtype == "table" then
 								if nofom.axiom then
-									table.insert(trees, {pos, nofom})
+									table.insert(trees, {pos, action})
 									spawned = true
 								else
 									local fdir = nil
@@ -473,7 +473,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 								param2s[p_p_top] = fdir
 								spawned = true
 							elseif objtype == "function" then
-								table.insert(funcs, {nofom, pos})
+								table.insert(funcs, {action, pos})
 								spawned = true
 							elseif objtype == "string"
 							and pcall(loadstring(("return %s(...)"):
@@ -500,13 +500,13 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 		t1 = os.clock()
 
 		for _,i in pairs(trees) do
-			plantslib:generate_tree(i[1], i[2])
+			plantslib:generate_tree(i[1], plantslib.actions_list[i[2]][2])
 		end
 		plantslib:dbg(string.format("trees set after ca. %.2fs", os.clock() - t1))
 		t1 = os.clock()
 
 		for _,i in pairs(funcs) do
-			i[1](i[2])
+			plantslib.actions_list[i[1]][2](i[2])
 		end
 		plantslib:dbg(string.format("funcs done after ca. %.2fs", os.clock() - t1))
 
