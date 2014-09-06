@@ -23,7 +23,7 @@ else
     S = function ( s ) return s end
 end
 
-local DEBUG = false --... except if you want to spam the console with debugging info :-)
+local DEBUG = 1 --... except if you want to spam the console with debugging info :-)
 
 function plantslib:dbg(msg)
 	if DEBUG then
@@ -497,7 +497,8 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 		vm:set_param2_data(param2s)
 
 		plantslib:dbg(string.format("nodes set after ca. %.2fs", os.clock() - t1))
-		t1 = os.clock()
+		--minetest.after(3, function(trees, funcs)
+		local t1 = os.clock()
 
 		for _,i in pairs(trees) do
 			plantslib:generate_tree(i[1], plantslib.actions_list[i[2]][2])
@@ -509,6 +510,7 @@ function plantslib:generate_block_with_air_checking(minp, maxp, blockseed)
 			plantslib.actions_list[i[1]][2](i[2])
 		end
 		plantslib:dbg(string.format("funcs done after ca. %.2fs", os.clock() - t1))
+		--end, trees, funcs)
 
 	end
 end
